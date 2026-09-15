@@ -5,18 +5,21 @@ import { createAdminClient } from '../../../../../lib/supabase/admin'
 type FlutterwaveVerifyResponse = { status: string; message: string; data?: { status: string; amount: number; currency: string; tx_ref: string; id: number } }
 
 export async function POST(request: Request) {
-  let payload: { orderId?: string; transactionId?: string }
+  let payload: { orderId?: string; transactionId?: string; txRef?: string }
   try { payload = await request.json() } catch { return NextResponse.json({ error: 'Invalid verification request.' }, { status: 400 }) }
-  if (!payload.orderId || !payload.transactionId) return NextResponse.json({ error: 'Order and transaction IDs are required.' }, { status: 400 })
+  if (!payload.orderId || (!payload.transactionId && !payload.txRef)) return NextResponse.json({ error: 'Order and transaction details are required.' }, { status: 400 })
   const secretKey = process.env.FLUTTERWAVE_SECRET_KEY
   if (!secretKey) return NextResponse.json({ error: 'Flutterwave is not configured yet.' }, { status: 503 })
   let supabase
   try { supabase = createAdminClient() } catch { return NextResponse.json({ error: 'Order service is not configured yet.' }, { status: 503 }) }
   const { data: order } = await supabase.from('orders').select('id, total_kobo, provider_transaction_id, currency').eq('id', payload.orderId).single()
   if (!order) return NextResponse.json({ error: 'Order not found.' }, { status: 404 })
+  const transactionPath = payload.transactionId
+    ? `transactions/${encodeURIComponent(payload.transactionId)}/verify`
+    : `transactions/verify_by_reference?tx_ref=${encodeURIComponent(payload.txRef ?? '')}`
   let flutterwaveResponse: Response
   try {
-    flutterwaveResponse = await fetch(`https://api.flutterwave.com/v3/transactions/${encodeURIComponent(payload.transactionId)}/verify`, { headers: { Authorization: `Bearer ${secretKey}` }, signal: AbortSignal.timeout(10000) })
+    flutterwaveResponse = await fetch(`https://api.flutterwave.com/v3/${transactionPath}`, { headers: { Authorization: `Bearer ${secretKey}` }, signal: AbortSignal.timeout(10000) })
   } catch {
     return NextResponse.json({ retryable: true, error: 'Payment status is taking longer than expected. We will keep checking.' }, { status: 202 })
   }
