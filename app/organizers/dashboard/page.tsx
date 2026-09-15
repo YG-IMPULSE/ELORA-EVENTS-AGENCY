@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '../../../lib/supabase/server'
 import { createAdminClient } from '../../../lib/supabase/admin'
+import { reconcilePendingOrders } from '../../../lib/payments/reconcile'
 
 type OrganizerEvent = {
   id: string
@@ -24,6 +25,7 @@ export default async function OrganizerDashboardPage() {
   const { data, error } = await supabase.from('events').select('id, title, slug, status, venue_name, starts_at, ticket_types(quantity_total, quantity_sold)').order('starts_at', { ascending: true })
   const events = (data ?? []) as OrganizerEvent[]
   const eventIds = events.map((event) => event.id)
+  await reconcilePendingOrders(eventIds)
   const admin = createAdminClient()
   const { data: paidOrders } = eventIds.length > 0 ? await admin.from('orders').select('event_id, total_kobo').eq('status', 'paid').in('event_id', eventIds) : { data: [] }
   const orders = (paidOrders ?? []) as PaidOrder[]

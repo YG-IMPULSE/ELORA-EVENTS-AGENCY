@@ -24,3 +24,5 @@
 
 .dashboard-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 46px; }.dashboard-metrics > div { padding: 18px; border: 1px solid #b7c5d7; background: #fff; }.dashboard-metrics span { display: block; margin-bottom: 11px; color: #637087; font: 10px 'DM Mono', monospace; text-transform: uppercase; }.dashboard-metrics b { color: #070a10; font: 700 24px Manrope, sans-serif; letter-spacing: -.06em; }.event-cover, .event-cover-preview { display: block; width: min(100%, 560px); aspect-ratio: 16 / 9; margin-bottom: 28px; object-fit: cover; border: 1px solid #b7c5d7; }
 @media (max-width: 760px) { .dashboard-metrics { grid-template-columns: 1fr 1fr; } }
+
+.app-shell .account-button { padding: 7px 10px; border-color: #8b98aa; font-size: 9px; letter-spacing: .03em; }
