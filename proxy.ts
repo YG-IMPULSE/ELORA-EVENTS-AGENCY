@@ -19,7 +19,14 @@ export async function proxy(request: NextRequest) {
     },
   })
 
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+  const isOrganizerRoute = request.nextUrl.pathname === '/organizers/create' || request.nextUrl.pathname === '/organizers/dashboard'
+  if (!user && isOrganizerRoute) {
+    const signInUrl = request.nextUrl.clone()
+    signInUrl.pathname = '/organizers/sign-in'
+    signInUrl.searchParams.set('next', request.nextUrl.pathname)
+    return NextResponse.redirect(signInUrl)
+  }
   return response
 }
 

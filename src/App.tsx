@@ -34,7 +34,7 @@ function App({ events }: { events: EventItem[] }) {
           <a className="nav-link" href="#how-it-works">How it works</a>
           <a className="nav-link" href="/organizers">For organizers</a>
         </div>
-        <div className="nav-actions"><a className="scan-link" href="/scan">Venue scan ↗</a><button className="account-button" type="button">Sign in</button></div>
+        <div className="nav-actions"><a className="scan-link" href="/scan">Venue scan ↗</a><a className="account-button" href="/organizers/sign-in">Sign in</a></div>
       </nav>
 
       <section className="hero-section" id="top">
