@@ -29,6 +29,23 @@ async function sendTicketEmail(order: OrderRecord, tickets: Array<{ ticketCode: 
   }
 }
 
+async function sendOrganizerEmail(order: OrderRecord) {
+  const apiKey = process.env.RESEND_API_KEY
+  const from = process.env.RESEND_FROM_EMAIL
+  if (!apiKey || !from) return false
+  const admin = createAdminClient()
+  const { data } = await admin.auth.admin.getUserById(order.events[0]?.organizer_id ?? '')
+  const organizerEmail = data.user?.email
+  if (!organizerEmail) return false
+  try {
+    const response = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from, to: [organizerEmail], subject: `New ticket sale for ${order.events[0]?.title ?? 'your event'}`, html: `<div style="font-family:Arial,sans-serif;color:#070a10"><h1>New ticket sale.</h1><p>A customer bought tickets for <strong>${order.events[0]?.title ?? 'your event'}</strong>.</p><p>Customer: ${order.customer_name ?? 'Not provided'}<br />Email: ${order.customer_email ?? 'Not provided'}<br />Order total: N${(Number(order.total_kobo) / 100).toLocaleString('en-NG')}</p><p>Open your Elora organizer dashboard to review the sale.</p></div>` }) })
+    return response.ok
+  } catch (error) {
+    console.error('Organizer email delivery failed:', error)
+    return false
+  }
+}
+
 export async function settlePaidOrder(orderId: string, providerReference: string): Promise<SettlementResult> {
   const supabase = createAdminClient()
   const { data, error } = await supabase.from('orders').select('id, status, total_kobo, customer_name, customer_email, event_id, provider_transaction_id, events(organizer_id, title), order_items(id, ticket_type_id, quantity, unit_price_kobo, ticket_types(name))').eq('id', orderId).single()
@@ -64,5 +81,6 @@ export async function settlePaidOrder(orderId: string, providerReference: string
   await supabase.from('payouts').insert({ organizer_id: event.organizer_id, commission_ledger_id: ledger.id, amount_kobo: organizerAmount, status: 'pending', provider: 'flutterwave' })
   await supabase.from('orders').update({ status: 'paid', provider_reference: providerReference, paid_at: new Date().toISOString(), verified_at: new Date().toISOString() }).eq('id', order.id)
   const emailSent = await sendTicketEmail(order, tickets)
+  await sendOrganizerEmail(order)
   return { alreadySettled: false, ticketCodes: tickets.map((ticket) => ticket.ticketCode), emailSent }
 }

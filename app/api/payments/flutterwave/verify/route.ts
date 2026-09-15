@@ -14,8 +14,14 @@ export async function POST(request: Request) {
   try { supabase = createAdminClient() } catch { return NextResponse.json({ error: 'Order service is not configured yet.' }, { status: 503 }) }
   const { data: order } = await supabase.from('orders').select('id, total_kobo, provider_transaction_id, currency').eq('id', payload.orderId).single()
   if (!order) return NextResponse.json({ error: 'Order not found.' }, { status: 404 })
-  const flutterwaveResponse = await fetch(`https://api.flutterwave.com/v3/transactions/${encodeURIComponent(payload.transactionId)}/verify`, { headers: { Authorization: `Bearer ${secretKey}` } })
+  let flutterwaveResponse: Response
+  try {
+    flutterwaveResponse = await fetch(`https://api.flutterwave.com/v3/transactions/${encodeURIComponent(payload.transactionId)}/verify`, { headers: { Authorization: `Bearer ${secretKey}` }, signal: AbortSignal.timeout(10000) })
+  } catch {
+    return NextResponse.json({ retryable: true, error: 'Payment status is taking longer than expected. We will keep checking.' }, { status: 202 })
+  }
   const result = await flutterwaveResponse.json() as FlutterwaveVerifyResponse
+  if (result.data?.status === 'pending' || result.data?.status === 'queued') return NextResponse.json({ retryable: true, error: 'Payment is still being confirmed.' }, { status: 202 })
   const verified = result.status === 'success' && result.data?.status === 'successful' && result.data.currency === 'NGN' && result.data.tx_ref === order.provider_transaction_id && Number(result.data.amount) === Number(order.total_kobo) / 100
   if (!flutterwaveResponse.ok || !verified || !result.data) return NextResponse.json({ error: 'Payment could not be verified.' }, { status: 402 })
   try {

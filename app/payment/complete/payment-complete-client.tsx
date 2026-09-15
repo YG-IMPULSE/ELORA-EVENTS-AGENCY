@@ -11,10 +11,20 @@ export default function PaymentCompleteClient({ orderId, transactionId, status }
   useEffect(() => {
     if (!orderId || !transactionId || status === 'cancelled') { queueMicrotask(() => { setState('failed'); setMessage('Payment was cancelled or the confirmation details are missing.') }); return }
     const verify = async () => {
-      const response = await fetch('/api/payments/flutterwave/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, transactionId }) })
-      const result = await response.json() as { error?: string; ticketCodes?: string[]; emailSent?: boolean }
-      if (!response.ok) { setState('failed'); setMessage(result.error ?? 'We could not verify this payment.'); return }
-      setState('success'); setMessage(result.emailSent ? 'Payment verified. Your ticket has been sent to your email.' : 'Payment verified. Your ticket is ready, but email delivery is not configured yet.')
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        if (attempt > 0) {
+          setMessage(`Still checking Flutterwave... attempt ${attempt + 1} of 8.`)
+          await new Promise((resolve) => setTimeout(resolve, Math.min(12000, 2000 * attempt)))
+        }
+        const response = await fetch('/api/payments/flutterwave/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, transactionId }) })
+        const result = await response.json() as { error?: string; retryable?: boolean; ticketCodes?: string[]; emailSent?: boolean }
+        if (response.ok && !result.retryable) {
+          setState('success'); setMessage(result.emailSent ? 'Payment verified. Your ticket has been sent to your email.' : 'Payment verified. Your ticket is ready, but email delivery is not configured yet.')
+          return
+        }
+        if (!result.retryable && response.status !== 408 && response.status !== 429 && response.status !== 502 && response.status !== 503) { setState('failed'); setMessage(result.error ?? 'We could not verify this payment.'); return }
+      }
+      setState('failed'); setMessage('We could not confirm the payment yet. Your order remains under review; please contact support before trying to pay again.')
     }
     verify().catch(() => { setState('failed'); setMessage('We could not reach the payment verification service.') })
   }, [orderId, transactionId, status])
