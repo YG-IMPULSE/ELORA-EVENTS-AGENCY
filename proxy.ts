@@ -20,7 +20,7 @@ export async function proxy(request: NextRequest) {
   })
 
   const { data: { user } } = await supabase.auth.getUser()
-  const isOrganizerRoute = request.nextUrl.pathname === '/organizers/create' || request.nextUrl.pathname === '/organizers/dashboard'
+  const isOrganizerRoute = request.nextUrl.pathname.startsWith('/organizers/create') || request.nextUrl.pathname.startsWith('/organizers/dashboard') || request.nextUrl.pathname.startsWith('/organizers/edit')
   if (!user && isOrganizerRoute) {
     const signInUrl = request.nextUrl.clone()
     signInUrl.pathname = '/organizers/sign-in'

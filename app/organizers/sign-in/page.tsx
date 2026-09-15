@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '../../../lib/supabase/client'
 
@@ -12,6 +12,12 @@ export default function OrganizerSignInPage() {
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => {
+      if (data.user?.user_metadata?.role === 'organizer') router.replace('/organizers/dashboard')
+    })
+  }, [router])
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -31,7 +37,8 @@ export default function OrganizerSignInPage() {
       setMode('sign-in')
       return
     }
-    router.push('/organizers/dashboard')
+    const next = new URLSearchParams(window.location.search).get('next')
+    router.push(next?.startsWith('/organizers/') ? next : '/organizers/dashboard')
     router.refresh()
   }
 

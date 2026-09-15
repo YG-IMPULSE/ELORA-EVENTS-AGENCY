@@ -49,5 +49,8 @@ async function getPublishedEvents(): Promise<EventItem[]> {
 
 export default async function HomePage() {
   const events = await getPublishedEvents()
-  return <App events={events} />
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const isOrganizer = user?.user_metadata?.role === 'organizer'
+  return <App events={events} isOrganizer={isOrganizer} />
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { createClient } from '../lib/supabase/client'
 
 export type EventItem = {
   title: string
@@ -12,7 +13,7 @@ export type EventItem = {
   slug: string
 }
 
-function App({ events }: { events: EventItem[] }) {
+function App({ events, isOrganizer }: { events: EventItem[]; isOrganizer: boolean }) {
   const [activeCategory, setActiveCategory] = useState('All events')
   const [query, setQuery] = useState('')
   const categories = ['All events', ...new Set(events.map((event) => event.category))]
@@ -34,7 +35,7 @@ function App({ events }: { events: EventItem[] }) {
           <a className="nav-link" href="#how-it-works">How it works</a>
           <a className="nav-link" href="/organizers">For organizers</a>
         </div>
-        <div className="nav-actions"><a className="scan-link" href="/scan">Venue scan ↗</a><a className="account-button" href="/organizers/sign-in">Sign in</a></div>
+        <div className="nav-actions"><a className="scan-link" href="/scan">Venue scan ↗</a>{isOrganizer ? <><a className="account-button" href="/organizers/dashboard">Organizer dashboard</a><button className="account-button" type="button" onClick={async () => { await createClient().auth.signOut(); window.location.reload() }}>Sign out</button></> : <a className="account-button" href="/organizers/sign-in">Organizer sign in</a>}</div>
       </nav>
 
       <section className="hero-section" id="top">
