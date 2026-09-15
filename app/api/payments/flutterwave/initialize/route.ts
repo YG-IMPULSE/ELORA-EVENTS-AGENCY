@@ -9,8 +9,9 @@ export async function POST(request: Request) {
   let payload: PaymentPayload
   try { payload = await request.json() } catch { return NextResponse.json({ error: 'Invalid payment request.' }, { status: 400 }) }
   if (!payload.orderId || !payload.customerName?.trim() || !payload.customerEmail?.trim()) return NextResponse.json({ error: 'Order and customer details are required.' }, { status: 400 })
-  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY
+  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY?.trim()
   if (!secretKey) return NextResponse.json({ error: 'Flutterwave is not configured yet.' }, { status: 503 })
+  if (!/^FLWSECK(?:_TEST)?-/.test(secretKey)) return NextResponse.json({ error: 'Flutterwave Secret Key is invalid. Add the Secret Key from Flutterwave Dashboard > Settings > API Keys, then restart the server.' }, { status: 503 })
 
   let supabase
   try { supabase = createAdminClient() } catch { return NextResponse.json({ error: 'Order service is not configured yet.' }, { status: 503 }) }
@@ -25,3 +26,5 @@ export async function POST(request: Request) {
   await supabase.from('orders').update({ provider: 'flutterwave', provider_transaction_id: txRef }).eq('id', order.id)
   return NextResponse.json({ paymentLink: result.data.link }, { status: 200 })
 }
+
+
