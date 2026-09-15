@@ -21,10 +21,10 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-For the Vercel deployment, use `https://elora-events-agency.vercel.app` as `NEXT_PUBLIC_SITE_URL` and configure the Flutterwave webhook at:
+For the Vercel deployment, use `https://elora-events-agency-yg-impulses-projects.vercel.app` as `NEXT_PUBLIC_SITE_URL` and configure the Flutterwave webhook at:
 
 ```text
-https://elora-events-agency.vercel.app/api/payments/flutterwave/webhook
+https://elora-events-agency-yg-impulses-projects.vercel.app/api/payments/flutterwave/webhook
 ```
 
 ## Validation
@@ -64,7 +64,7 @@ RESEND_API_KEY
 RESEND_FROM_EMAIL
 ```
 
-Before using payment credentials, rotate any secret that has been exposed in chat or committed files. For email delivery, verify your sending domain in Resend and use a sender such as `tickets@your-domain.com`; a placeholder sender will not deliver production mail.
+Before using payment credentials, rotate any secret that has been exposed in chat or committed files. For email delivery, create a Resend account, verify your sending domain, create an API key, and add `RESEND_API_KEY` plus a sender such as `tickets@your-domain.com` to Vercel Production variables. A placeholder sender will not deliver production mail. Email failure does not invalidate a verified payment; the ticket remains issued and the payment response reports that email delivery is unavailable.
 
 After changing the signup trigger or schema, rerun the complete `supabase/schema.sql` file in SQL Editor. It is safe to rerun. New organizer accounts can then be created at `/organizers/sign-in`, and their protected dashboard is available at `/organizers/dashboard`.
 
