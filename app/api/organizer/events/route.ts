@@ -82,14 +82,21 @@ export async function PATCH(request: Request) {
 
   const payload = await request.json() as EventPayload
   const title = payload.title?.trim()
-  const startsAt = payload.startsAt ? new Date(payload.startsAt) : null
-  const endsAt = payload.endsAt ? new Date(payload.endsAt) : null
+  const startsAtValue = payload.startsAt?.trim()
+  const endsAtValue = payload.endsAt?.trim()
+  const startsAt = startsAtValue ? new Date(startsAtValue) : null
+  const endsAt = endsAtValue ? new Date(endsAtValue) : null
   const ticketPriceNaira = Number(payload.ticketPriceNaira)
   const ticketQuantity = Number(payload.ticketQuantity)
 
-  if (!payload.eventId || !title || !startsAt || Number.isNaN(startsAt.getTime()) || (endsAt && Number.isNaN(endsAt.getTime())) || (endsAt && endsAt < startsAt) || !payload.ticketName?.trim() || !Number.isFinite(ticketPriceNaira) || ticketPriceNaira < 0 || !Number.isInteger(ticketQuantity) || ticketQuantity < 1) {
-    return NextResponse.json({ error: 'Add an event title, valid dates, ticket details, price and quantity.' }, { status: 400 })
-  }
+  if (!payload.eventId) return NextResponse.json({ error: 'This event could not be identified. Reload the edit page and try again.' }, { status: 400 })
+  if (!title) return NextResponse.json({ error: 'Add an event title.' }, { status: 400 })
+  if (!startsAt || Number.isNaN(startsAt.getTime())) return NextResponse.json({ error: 'Add a valid start date and time.' }, { status: 400 })
+  if (endsAt && Number.isNaN(endsAt.getTime())) return NextResponse.json({ error: 'Add a valid end date and time or leave it blank.' }, { status: 400 })
+  if (endsAt && endsAt < startsAt) return NextResponse.json({ error: 'The end date must be after the start date.' }, { status: 400 })
+  if (!payload.ticketName?.trim()) return NextResponse.json({ error: 'Add a ticket name.' }, { status: 400 })
+  if (!Number.isFinite(ticketPriceNaira) || ticketPriceNaira < 0) return NextResponse.json({ error: 'Add a valid ticket price.' }, { status: 400 })
+  if (!Number.isInteger(ticketQuantity) || ticketQuantity < 1) return NextResponse.json({ error: 'Add a whole ticket quantity greater than zero.' }, { status: 400 })
 
   const { data: event, error: eventError } = await supabase.from('events').select('id, slug').eq('id', payload.eventId).eq('organizer_id', user.id).single()
   if (eventError || !event) return NextResponse.json({ error: 'Event not found or you do not have permission to edit it.' }, { status: 404 })
