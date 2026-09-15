@@ -2,24 +2,20 @@
 
 import { useMemo, useState } from 'react'
 
-type EventItem = {
+export type EventItem = {
   title: string
   location: string
   date: string
   category: string
   price: string
   code: string
+  slug: string
 }
 
-const events: EventItem[] = [
-  { title: 'Lagos After Dark', location: 'Muri Okunola Park, Lagos', date: '18 OCT 2026', category: 'Music', price: 'From N35,000', code: '01' },
-  { title: 'The Maker Market', location: 'Landmark Beach, Lagos', date: '26 OCT 2026', category: 'Culture', price: 'From N5,000', code: '02' },
-  { title: 'Altitude: Live', location: 'Eko Convention Centre', date: '02 NOV 2026', category: 'Concert', price: 'From N50,000', code: '03' },
-]
-
-function App() {
+function App({ events }: { events: EventItem[] }) {
   const [activeCategory, setActiveCategory] = useState('All events')
   const [query, setQuery] = useState('')
+  const categories = ['All events', ...new Set(events.map((event) => event.category))]
   const filteredEvents = useMemo(() => {
     const normalizedQuery = query.toLowerCase().trim()
     return events.filter((event) => {
@@ -27,7 +23,7 @@ function App() {
       const queryMatches = !normalizedQuery || `${event.title} ${event.location}`.toLowerCase().includes(normalizedQuery)
       return categoryMatches && queryMatches
     })
-  }, [activeCategory, query])
+  }, [activeCategory, events, query])
 
   return (
     <main className="app-shell">
@@ -36,7 +32,7 @@ function App() {
         <div className="nav-links">
           <a className="nav-link nav-link--active" href="#events">Discover</a>
           <a className="nav-link" href="#how-it-works">How it works</a>
-          <a className="nav-link" href="#organizers">For organizers</a>
+          <a className="nav-link" href="/organizers">For organizers</a>
         </div>
         <div className="nav-actions"><a className="scan-link" href="/scan">Venue scan ↗</a><button className="account-button" type="button">Sign in</button></div>
       </nav>
@@ -48,9 +44,9 @@ function App() {
 
       <section className="value-strip" id="how-it-works"><div><b>01</b><span>Buy without friction</span><small>One clear checkout for your ticket and extras.</small></div><div><b>02</b><span>Enter from your phone</span><small>Fast QR verification at the venue door.</small></div><div><b>03</b><span>Trust the record</span><small>Receipts, orders and policies in one place.</small></div></section>
 
-      <section className="catalog-section" id="events"><div className="section-heading"><div><p className="eyebrow">SELECT YOUR NEXT EXPERIENCE</p><h2>Upcoming events</h2></div><a href="#events" className="text-link">View all events <span>→</span></a></div><div className="category-row" role="tablist" aria-label="Event categories">{['All events', 'Music', 'Concert', 'Culture'].map((category) => <button key={category} className={activeCategory === category ? 'category-button category-button--active' : 'category-button'} type="button" onClick={() => setActiveCategory(category)}>{category}</button>)}</div><div className="event-grid">{filteredEvents.map((event) => <article className="event-card" key={event.title}><div className="event-art"><span className="event-index">{event.code} / 03</span><span className="art-word">{event.category.toUpperCase()}</span><strong>{event.title.split(' ')[0]}<br /><em>{event.title.split(' ').slice(1).join(' ')}</em></strong></div><div className="event-info"><p className="event-date">{event.date}</p><h3>{event.title}</h3><p className="event-location">{event.location}</p><div className="event-footer"><strong>{event.price}</strong><button type="button" aria-label={`View ${event.title}`}>→</button></div></div></article>)}</div>{filteredEvents.length === 0 && <p className="empty-state">No events match that search.</p>}</section>
+      <section className="catalog-section" id="events"><div className="section-heading"><div><p className="eyebrow">SELECT YOUR NEXT EXPERIENCE</p><h2>Upcoming events</h2></div><a href="#events" className="text-link">View all events <span>→</span></a></div><div className="category-row" role="tablist" aria-label="Event categories">{categories.map((category) => <button key={category} className={activeCategory === category ? 'category-button category-button--active' : 'category-button'} type="button" onClick={() => setActiveCategory(category)}>{category}</button>)}</div><div className="event-grid">{filteredEvents.map((event) => <article className="event-card" key={event.title}><div className="event-art"><span className="event-index">{event.code} / {String(events.length).padStart(2, '0')}</span><span className="art-word">{event.category.toUpperCase()}</span><strong>{event.title.split(' ')[0]}<br /><em>{event.title.split(' ').slice(1).join(' ')}</em></strong></div><div className="event-info"><p className="event-date">{event.date}</p><h3>{event.title}</h3><p className="event-location">{event.location}</p><div className="event-footer"><strong>{event.price}</strong><a className="event-view-link" href={`/events/${event.slug}`} aria-label={`View ${event.title}`}>→</a></div></div></article>)}</div>{filteredEvents.length === 0 && <p className="empty-state">No published events yet. Organizer listings will appear here once they go live.</p>}</section>
 
-      <section className="organizer-section" id="organizers"><div><p className="eyebrow">FOR ORGANIZERS</p><h2>Run the event.<br /><strong>We handle the flow.</strong></h2><p>From ticket inventory to the door scan, Elora keeps the customer journey and the operational record connected.</p><a className="button button--dark" href="#top">Talk to Elora <span>→</span></a></div><div className="operations-list"><div><span>Ticketing</span><b>Built for conversion</b><i>01</i></div><div><span>Check-in</span><b>Scan in seconds</b><i>02</i></div><div><span>Reporting</span><b>Know what sold</b><i>03</i></div><div><span>Support</span><b>Stay in control</b><i>04</i></div></div></section>
+      <section className="organizer-section" id="organizers"><div><p className="eyebrow">FOR ORGANIZERS</p><h2>Run the event.<br /><strong>We handle the flow.</strong></h2><p>From ticket inventory to the door scan, Elora keeps the customer journey and the operational record connected.</p><a className="button button--dark" href="/organizers">Talk to Elora <span>→</span></a></div><div className="operations-list"><div><span>Ticketing</span><b>Built for conversion</b><i>01</i></div><div><span>Check-in</span><b>Scan in seconds</b><i>02</i></div><div><span>Reporting</span><b>Know what sold</b><i>03</i></div><div><span>Support</span><b>Stay in control</b><i>04</i></div></div></section>
 
       <footer className="footer"><span className="wordmark">ELORA<span>/</span></span><p>Clear access to better experiences.</p><a href="#top" className="text-link">Back to top ↑</a></footer>
     </main>
