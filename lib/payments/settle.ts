@@ -66,6 +66,11 @@ export async function settlePaidOrder(orderId: string, providerReference: string
 
   const tickets: Array<{ ticketCode: string; qrDataUrl: string }> = []
   for (const item of order.order_items) {
+    const { data: existingTickets } = await supabase.from('tickets').select('ticket_code, qr_payload').eq('order_item_id', item.id)
+    if (existingTickets?.length === item.quantity) {
+      existingTickets.forEach((ticket) => tickets.push({ ticketCode: ticket.ticket_code, qrDataUrl: '' }))
+      continue
+    }
     for (let index = 0; index < item.quantity; index += 1) {
       const ticketCode = `ELR-${crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()}`
       const qrPayload = JSON.stringify({ ticketCode, orderId: order.id, eventId: order.event_id })
@@ -83,10 +88,19 @@ export async function settlePaidOrder(orderId: string, providerReference: string
   const total = Number(order.total_kobo)
   const platformFee = Math.round(total * 0.05)
   const organizerAmount = total - platformFee
-  const { data: ledger, error: ledgerError } = await supabase.from('commission_ledger').insert({ order_id: order.id, organizer_id: event.organizer_id, gross_kobo: total, platform_fee_kobo: platformFee, organizer_amount_kobo: organizerAmount, status: 'payable' }).select('id').single()
-  if (ledgerError || !ledger) throw new Error(`Commission ledger failed: ${ledgerError?.message ?? 'unknown error'}`)
-  await supabase.from('payouts').insert({ organizer_id: event.organizer_id, commission_ledger_id: ledger.id, amount_kobo: organizerAmount, status: 'pending', provider: 'flutterwave' })
-  await supabase.from('orders').update({ status: 'paid', provider_reference: providerReference, paid_at: new Date().toISOString(), verified_at: new Date().toISOString() }).eq('id', order.id)
+  const now = new Date().toISOString()
+  const { error: orderUpdateError } = await supabase.from('orders').update({ status: 'paid', provider_reference: providerReference, paid_at: now, verified_at: now }).eq('id', order.id).eq('status', 'pending')
+  if (orderUpdateError) throw new Error(`Payment acknowledgement failed: ${orderUpdateError.message}`)
+
+  const { data: ledger, error: ledgerError } = await supabase.from('commission_ledger').upsert({ order_id: order.id, organizer_id: event.organizer_id, gross_kobo: total, platform_fee_kobo: platformFee, organizer_amount_kobo: organizerAmount, status: 'payable' }, { onConflict: 'order_id' }).select('id').single()
+  if (ledgerError || !ledger) console.error(`Commission ledger failed for paid order ${order.id}:`, ledgerError?.message ?? 'unknown error')
+  if (ledger) {
+    const { data: existingPayout } = await supabase.from('payouts').select('id').eq('commission_ledger_id', ledger.id).maybeSingle()
+    if (!existingPayout) {
+      const { error: payoutError } = await supabase.from('payouts').insert({ organizer_id: event.organizer_id, commission_ledger_id: ledger.id, amount_kobo: organizerAmount, status: 'pending', provider: 'flutterwave' })
+      if (payoutError) console.error(`Payout record failed for paid order ${order.id}:`, payoutError.message)
+    }
+  }
   const emailSent = await sendTicketEmail(order, tickets)
   await sendOrganizerEmail(order)
   return { alreadySettled: false, ticketCodes: tickets.map((ticket) => ticket.ticketCode), emailSent }
